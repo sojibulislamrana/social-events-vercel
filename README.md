@@ -2,12 +2,12 @@
 
 ### GET API
 
-app.get('/events')
-app.get('/events/upcoming')
-app.get('/events/:id')
-app.get('/joined')
+app.get('/events');
+app.get('/events/upcoming');
+app.get('/events/:id');
+app.get('/joined');
 
 ### PUT API
 
-app.post('/join-event')
-app.post('')
+app.post('/join-event');
+app.post('');
