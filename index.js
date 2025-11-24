@@ -15,14 +15,9 @@ const port = process.env.PORT || 5000;
 // --- Middlewares ---
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      // add your deployed frontend URLs, e.g.:
-      // "https://your-frontend.netlify.app",
-      // "https://your-frontend.web.app",
-    ],
+    origin: ["https://social-events-platform-1fe94.web.app"],
     credentials: true,
-  })
+  }),
 );
 app.use(express.json());
 
@@ -468,7 +463,7 @@ app.put("/events/:id", async (req, res) => {
 
     const result = await eventsCollection.updateOne(
       { _id: new ObjectId(id) },
-      updateDoc
+      updateDoc,
     );
 
     res.json({
