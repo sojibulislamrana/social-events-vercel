@@ -9,13 +9,13 @@ dotenv.config();
 const app = express();
 
 const uri = process.env.MONGO_URI;
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8000;
 
 app.use(
   cors({
-    origin: ["https://social-events-platform-1fe94.web.app"],
+    origin: ["http://localhost:5173"],
     credentials: true,
-  }),
+  })
 );
 app.use(express.json());
 
@@ -457,7 +457,7 @@ app.put("/events/:id", async (req, res) => {
 
     const result = await eventsCollection.updateOne(
       { _id: new ObjectId(id) },
-      updateDoc,
+      updateDoc
     );
 
     res.json({
