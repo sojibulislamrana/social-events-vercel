@@ -70,6 +70,34 @@ app.get("/", (req, res) => {
   res.send("Social Development Events API is running.");
 });
 
+// Statistics endpoint
+app.get("/stats", async (req, res) => {
+  try {
+    const totalEvents = await eventsCollection.estimatedDocumentCount();
+    const totalJoined = await joinedCollection.estimatedDocumentCount();
+    
+    // Get unique user emails from events and joined events
+    const creatorEmails = await eventsCollection.distinct("creatorEmail");
+    const participantEmails = await joinedCollection.distinct("userEmail");
+    const allUserEmails = [...new Set([...creatorEmails, ...participantEmails])];
+    const totalUsers = allUserEmails.length;
+
+    res.json({
+      ok: true,
+      totalEvents,
+      totalUsers,
+      totalJoined,
+    });
+  } catch (err) {
+    console.error("Stats error:", err);
+    res.status(500).json({
+      ok: false,
+      message: "Failed to load statistics",
+      error: err.message,
+    });
+  }
+});
+
 // Test DB
 app.get("/test-db", async (req, res) => {
   try {
