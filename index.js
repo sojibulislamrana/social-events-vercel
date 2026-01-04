@@ -45,6 +45,7 @@ async function initDb() {
   db = client.db("social_events");
   eventsCollection = db.collection("events");
   joinedCollection = db.collection("joinedEvents");
+  usersCollection = db.collection("users");
 
   isDbReady = true;
   console.log("✅ Connected to MongoDB");
@@ -76,9 +77,19 @@ app.get("/stats", async (req, res) => {
     const totalEvents = await eventsCollection.estimatedDocumentCount();
     const totalJoined = await joinedCollection.estimatedDocumentCount();
     
-    // Get unique user emails from events and joined events
-    const creatorEmails = await eventsCollection.distinct("creatorEmail");
-    const participantEmails = await joinedCollection.distinct("userEmail");
+    // Get unique user emails using aggregate (API Version 1 compatible)
+    const creatorEmailsResult = await eventsCollection.aggregate([
+      { $group: { _id: "$creatorEmail" } },
+      { $project: { _id: 0, email: "$_id" } }
+    ]).toArray();
+    
+    const participantEmailsResult = await joinedCollection.aggregate([
+      { $group: { _id: "$userEmail" } },
+      { $project: { _id: 0, email: "$_id" } }
+    ]).toArray();
+    
+    const creatorEmails = creatorEmailsResult.map(r => r.email).filter(Boolean);
+    const participantEmails = participantEmailsResult.map(r => r.email).filter(Boolean);
     const allUserEmails = [...new Set([...creatorEmails, ...participantEmails])];
     const totalUsers = allUserEmails.length;
 
@@ -93,6 +104,190 @@ app.get("/stats", async (req, res) => {
     res.status(500).json({
       ok: false,
       message: "Failed to load statistics",
+      error: err.message,
+    });
+  }
+});
+
+// ========== USER MANAGEMENT ENDPOINTS ==========
+
+// Get or create user in MongoDB
+app.post("/users/sync", async (req, res) => {
+  try {
+    const { email, displayName, photoURL } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        ok: false,
+        message: "Email is required.",
+      });
+    }
+
+    // Check if user exists
+    let user = await usersCollection.findOne({ email });
+
+    if (!user) {
+      // Create new user with default role
+      const newUser = {
+        email,
+        displayName: displayName || "",
+        photoURL: photoURL || "",
+        role: "user", // Default role
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const result = await usersCollection.insertOne(newUser);
+      user = { ...newUser, _id: result.insertedId };
+    } else {
+      // Update existing user info if provided
+      const updateData = {
+        updatedAt: new Date(),
+      };
+      if (displayName) updateData.displayName = displayName;
+      if (photoURL) updateData.photoURL = photoURL;
+
+      await usersCollection.updateOne(
+        { email },
+        { $set: updateData }
+      );
+      user = await usersCollection.findOne({ email });
+    }
+
+    res.json({
+      ok: true,
+      user: {
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("Sync user error:", err);
+    res.status(500).json({
+      ok: false,
+      message: "Failed to sync user.",
+      error: err.message,
+    });
+  }
+});
+
+// Get user by email
+app.get("/users/:email", async (req, res) => {
+  try {
+    const { email } = req.params;
+    const user = await usersCollection.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        ok: false,
+        message: "User not found.",
+      });
+    }
+
+    res.json({
+      ok: true,
+      user: {
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (err) {
+    console.error("Get user error:", err);
+    res.status(500).json({
+      ok: false,
+      message: "Failed to get user.",
+      error: err.message,
+    });
+  }
+});
+
+// Update user role (Admin only)
+app.patch("/users/:email/role", async (req, res) => {
+  try {
+    const { email } = req.params;
+    const { role, requestorEmail } = req.body;
+
+    if (!role || !["user", "admin"].includes(role)) {
+      return res.status(400).json({
+        ok: false,
+        message: "Valid role (user or admin) is required.",
+      });
+    }
+
+    // Check if requestor is admin
+    const requestor = await usersCollection.findOne({ email: requestorEmail });
+    if (!requestor || requestor.role !== "admin") {
+      return res.status(403).json({
+        ok: false,
+        message: "Only admins can update user roles.",
+      });
+    }
+
+    const result = await usersCollection.updateOne(
+      { email },
+      { $set: { role, updatedAt: new Date() } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: "User not found.",
+      });
+    }
+
+    res.json({
+      ok: true,
+      message: "User role updated successfully.",
+    });
+  } catch (err) {
+    console.error("Update role error:", err);
+    res.status(500).json({
+      ok: false,
+      message: "Failed to update user role.",
+      error: err.message,
+    });
+  }
+});
+
+// Get all users (Admin only)
+app.get("/users", async (req, res) => {
+  try {
+    const { requestorEmail } = req.query;
+
+    if (!requestorEmail) {
+      return res.status(400).json({
+        ok: false,
+        message: "Requestor email is required.",
+      });
+    }
+
+    // Check if requestor is admin
+    const requestor = await usersCollection.findOne({ email: requestorEmail });
+    if (!requestor || requestor.role !== "admin") {
+      return res.status(403).json({
+        ok: false,
+        message: "Only admins can view all users.",
+      });
+    }
+
+    const users = await usersCollection
+      .find({}, { projection: { email: 1, displayName: 1, photoURL: 1, role: 1, createdAt: 1 } })
+      .toArray();
+
+    res.json({
+      ok: true,
+      users,
+    });
+  } catch (err) {
+    console.error("Get all users error:", err);
+    res.status(500).json({
+      ok: false,
+      message: "Failed to get users.",
       error: err.message,
     });
   }
@@ -131,9 +326,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "City Park Cleanup Drive",
         description:
-          "Join us to clean up the city park and make it a cleaner space for everyone. We'll be collecting trash, planting flowers, and beautifying the park area. All volunteers welcome!",
+          "Join us to clean up the city park and make it a cleaner space for everyone. We'll be collecting trash, planting flowers, and beautifying the park area. All volunteers welcome! Bring gloves and water bottles.",
         eventType: "Cleanup",
-        thumbnail: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop&q=80",
         location: "City Park, Main Gate, Downtown",
         eventDate: addDays(3),
         creatorEmail: "demo1@example.com",
@@ -142,9 +337,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Tree Plantation Day",
         description:
-          "Plant trees in the community area and help us make the city greener. We'll provide all necessary tools and saplings. Let's work together for a sustainable future!",
+          "Plant trees in the community area and help us make the city greener. We'll provide all necessary tools and saplings. Let's work together for a sustainable future! Perfect for families and nature lovers.",
         eventType: "Plantation",
-        thumbnail: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&h=600&fit=crop&q=80",
         location: "Community Ground, Sector 5",
         eventDate: addDays(7),
         creatorEmail: "demo2@example.com",
@@ -153,9 +348,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Food Donation for Street Children",
         description:
-          "Distribute food packs and clothes to underprivileged children. Help us bring smiles to those in need. Your contribution matters!",
+          "Distribute food packs and clothes to underprivileged children. Help us bring smiles to those in need. Your contribution matters! We'll be serving hot meals and distributing essential items.",
         eventType: "Donation",
-        thumbnail: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop&q=80",
         location: "Central Bus Stand Area",
         eventDate: addDays(10),
         creatorEmail: "demo3@example.com",
@@ -164,9 +359,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Road Safety Awareness Campaign",
         description:
-          "Raise awareness about road safety rules among drivers and pedestrians. Educational sessions, demonstrations, and free safety equipment distribution.",
+          "Raise awareness about road safety rules among drivers and pedestrians. Educational sessions, demonstrations, and free safety equipment distribution. Learn life-saving road safety tips!",
         eventType: "Awareness",
-        thumbnail: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop&q=80",
         location: "City Square, Near Traffic Signal",
         eventDate: addDays(5),
         creatorEmail: "demo4@example.com",
@@ -175,9 +370,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Free Health Checkup Camp",
         description:
-          "Free basic health checkup and consultation for low-income families. Blood pressure, sugar level, and general health screening available.",
+          "Free basic health checkup and consultation for low-income families. Blood pressure, sugar level, and general health screening available. Qualified doctors and medical professionals will be present.",
         eventType: "Health Camp",
-        thumbnail: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=800&h=600&fit=crop&q=80",
         location: "Community Clinic, Block C",
         eventDate: addDays(14),
         creatorEmail: "demo5@example.com",
@@ -186,9 +381,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Beach Cleanup Initiative",
         description:
-          "Join us for a beach cleanup to protect marine life. We'll collect plastic waste and debris from the shoreline. Bring your friends and family!",
+          "Join us for a beach cleanup to protect marine life. We'll collect plastic waste and debris from the shoreline. Bring your friends and family! Help preserve our beautiful coastline.",
         eventType: "Cleanup",
-        thumbnail: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop&q=80",
         location: "Sunset Beach, Coastal Road",
         eventDate: addDays(6),
         creatorEmail: "demo1@example.com",
@@ -197,9 +392,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Community Garden Project",
         description:
-          "Help us establish a community garden where neighbors can grow fresh vegetables. Learn gardening techniques and contribute to food security.",
+          "Help us establish a community garden where neighbors can grow fresh vegetables. Learn gardening techniques and contribute to food security. All skill levels welcome!",
         eventType: "Plantation",
-        thumbnail: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&h=600&fit=crop&q=80",
         location: "Community Center, Green Valley",
         eventDate: addDays(9),
         creatorEmail: "demo2@example.com",
@@ -208,9 +403,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Winter Clothing Drive",
         description:
-          "Collect and distribute warm clothing to homeless individuals. Coats, blankets, and winter accessories needed. Let's keep everyone warm this winter!",
+          "Collect and distribute warm clothing to homeless individuals. Coats, blankets, and winter accessories needed. Let's keep everyone warm this winter! Drop off donations or volunteer to help distribute.",
         eventType: "Donation",
-        thumbnail: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&h=600&fit=crop&q=80",
         location: "Community Hall, Main Street",
         eventDate: addDays(12),
         creatorEmail: "demo3@example.com",
@@ -219,9 +414,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Mental Health Awareness Workshop",
         description:
-          "Educational workshop on mental health awareness, stress management, and self-care techniques. Open to all community members.",
+          "Educational workshop on mental health awareness, stress management, and self-care techniques. Open to all community members. Learn valuable coping strategies and support resources.",
         eventType: "Awareness",
-        thumbnail: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=600&fit=crop&q=80",
         location: "Community Center, Room 201",
         eventDate: addDays(8),
         creatorEmail: "demo4@example.com",
@@ -230,9 +425,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Blood Donation Camp",
         description:
-          "Organize a blood donation camp in collaboration with local hospital. Your donation can save lives. All donors will receive a certificate.",
+          "Organize a blood donation camp in collaboration with local hospital. Your donation can save lives. All donors will receive a certificate and refreshments. Every drop counts!",
         eventType: "Health Camp",
-        thumbnail: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop&q=80",
         location: "City Hospital, Ground Floor",
         eventDate: addDays(11),
         creatorEmail: "demo5@example.com",
@@ -241,9 +436,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Neighborhood Recycling Drive",
         description:
-          "Promote recycling in our neighborhood. Collect recyclable materials and educate residents about proper waste management practices.",
+          "Promote recycling in our neighborhood. Collect recyclable materials and educate residents about proper waste management practices. Help create a sustainable community!",
         eventType: "Cleanup",
-        thumbnail: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=600&fit=crop&q=80",
         location: "Recycling Center, Industrial Area",
         eventDate: addDays(13),
         creatorEmail: "demo1@example.com",
@@ -252,12 +447,78 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Educational Support Program",
         description:
-          "Provide free tutoring and educational support to underprivileged students. Help shape the future of our community!",
+          "Provide free tutoring and educational support to underprivileged students. Help shape the future of our community! Volunteers needed for math, science, and language subjects.",
         eventType: "Awareness",
-        thumbnail: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop",
+        thumbnail: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop&q=80",
         location: "Public Library, Study Hall",
         eventDate: addDays(15),
         creatorEmail: "demo2@example.com",
+        createdAt: now,
+      },
+      {
+        title: "River Cleanup Project",
+        description:
+          "Help clean up our local river and protect aquatic life. We'll remove trash, debris, and pollutants from the riverbanks. Water safety equipment will be provided.",
+        eventType: "Cleanup",
+        thumbnail: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop&q=80",
+        location: "Riverside Park, North Bridge",
+        eventDate: addDays(4),
+        creatorEmail: "demo1@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Urban Forest Development",
+        description:
+          "Create an urban forest in the heart of the city. Plant native trees and learn about urban forestry. This project will improve air quality and provide green spaces for future generations.",
+        eventType: "Plantation",
+        thumbnail: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop&q=80",
+        location: "Urban Development Zone, Block 7",
+        eventDate: addDays(16),
+        creatorEmail: "demo2@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Book Donation Drive",
+        description:
+          "Collect books for underprivileged children and community libraries. Fiction, non-fiction, textbooks, and children's books all welcome. Help spread the joy of reading!",
+        eventType: "Donation",
+        thumbnail: "https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&h=600&fit=crop&q=80",
+        location: "Central Library, Main Entrance",
+        eventDate: addDays(18),
+        creatorEmail: "demo3@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Digital Literacy Workshop",
+        description:
+          "Teach basic computer skills and internet usage to senior citizens and underprivileged youth. Help bridge the digital divide in our community. All equipment provided.",
+        eventType: "Awareness",
+        thumbnail: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=600&fit=crop&q=80",
+        location: "Community Tech Center, Floor 2",
+        eventDate: addDays(20),
+        creatorEmail: "demo4@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Eye Care Screening Camp",
+        description:
+          "Free eye checkup and vision screening for all ages. Glasses distribution for those in need. Professional optometrists will conduct the examinations.",
+        eventType: "Health Camp",
+        thumbnail: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop&q=80",
+        location: "Community Health Center, Main Hall",
+        eventDate: addDays(17),
+        creatorEmail: "demo5@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Plastic-Free Community Initiative",
+        description:
+          "Launch a campaign to reduce plastic usage in our community. Educational sessions, reusable bag distribution, and plastic collection drive. Let's make our community plastic-free!",
+        eventType: "Awareness",
+        thumbnail: "https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=800&h=600&fit=crop&q=80",
+        location: "Community Plaza, Central Area",
+        eventDate: addDays(19),
+        creatorEmail: "demo1@example.com",
         createdAt: now,
       },
     ];
