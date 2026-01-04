@@ -13,7 +13,7 @@ const port = process.env.PORT || 8000;
 
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["https://social-events-platform-1fe94.web.app"],
     credentials: true,
   })
 );
@@ -76,21 +76,31 @@ app.get("/stats", async (req, res) => {
   try {
     const totalEvents = await eventsCollection.estimatedDocumentCount();
     const totalJoined = await joinedCollection.estimatedDocumentCount();
-    
+
     // Get unique user emails using aggregate (API Version 1 compatible)
-    const creatorEmailsResult = await eventsCollection.aggregate([
-      { $group: { _id: "$creatorEmail" } },
-      { $project: { _id: 0, email: "$_id" } }
-    ]).toArray();
-    
-    const participantEmailsResult = await joinedCollection.aggregate([
-      { $group: { _id: "$userEmail" } },
-      { $project: { _id: 0, email: "$_id" } }
-    ]).toArray();
-    
-    const creatorEmails = creatorEmailsResult.map(r => r.email).filter(Boolean);
-    const participantEmails = participantEmailsResult.map(r => r.email).filter(Boolean);
-    const allUserEmails = [...new Set([...creatorEmails, ...participantEmails])];
+    const creatorEmailsResult = await eventsCollection
+      .aggregate([
+        { $group: { _id: "$creatorEmail" } },
+        { $project: { _id: 0, email: "$_id" } },
+      ])
+      .toArray();
+
+    const participantEmailsResult = await joinedCollection
+      .aggregate([
+        { $group: { _id: "$userEmail" } },
+        { $project: { _id: 0, email: "$_id" } },
+      ])
+      .toArray();
+
+    const creatorEmails = creatorEmailsResult
+      .map((r) => r.email)
+      .filter(Boolean);
+    const participantEmails = participantEmailsResult
+      .map((r) => r.email)
+      .filter(Boolean);
+    const allUserEmails = [
+      ...new Set([...creatorEmails, ...participantEmails]),
+    ];
     const totalUsers = allUserEmails.length;
 
     res.json({
@@ -147,10 +157,7 @@ app.post("/users/sync", async (req, res) => {
       if (displayName) updateData.displayName = displayName;
       if (photoURL) updateData.photoURL = photoURL;
 
-      await usersCollection.updateOne(
-        { email },
-        { $set: updateData }
-      );
+      await usersCollection.updateOne({ email }, { $set: updateData });
       user = await usersCollection.findOne({ email });
     }
 
@@ -276,7 +283,18 @@ app.get("/users", async (req, res) => {
     }
 
     const users = await usersCollection
-      .find({}, { projection: { email: 1, displayName: 1, photoURL: 1, role: 1, createdAt: 1 } })
+      .find(
+        {},
+        {
+          projection: {
+            email: 1,
+            displayName: 1,
+            photoURL: 1,
+            role: 1,
+            createdAt: 1,
+          },
+        }
+      )
       .toArray();
 
     res.json({
@@ -328,7 +346,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Join us to clean up the city park and make it a cleaner space for everyone. We'll be collecting trash, planting flowers, and beautifying the park area. All volunteers welcome! Bring gloves and water bottles.",
         eventType: "Cleanup",
-        thumbnail: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop&q=80",
         location: "City Park, Main Gate, Downtown",
         eventDate: addDays(3),
         creatorEmail: "demo1@example.com",
@@ -339,7 +358,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Plant trees in the community area and help us make the city greener. We'll provide all necessary tools and saplings. Let's work together for a sustainable future! Perfect for families and nature lovers.",
         eventType: "Plantation",
-        thumbnail: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&h=600&fit=crop&q=80",
         location: "Community Ground, Sector 5",
         eventDate: addDays(7),
         creatorEmail: "demo2@example.com",
@@ -350,7 +370,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Distribute food packs and clothes to underprivileged children. Help us bring smiles to those in need. Your contribution matters! We'll be serving hot meals and distributing essential items.",
         eventType: "Donation",
-        thumbnail: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop&q=80",
         location: "Central Bus Stand Area",
         eventDate: addDays(10),
         creatorEmail: "demo3@example.com",
@@ -361,7 +382,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Raise awareness about road safety rules among drivers and pedestrians. Educational sessions, demonstrations, and free safety equipment distribution. Learn life-saving road safety tips!",
         eventType: "Awareness",
-        thumbnail: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop&q=80",
         location: "City Square, Near Traffic Signal",
         eventDate: addDays(5),
         creatorEmail: "demo4@example.com",
@@ -372,7 +394,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Free basic health checkup and consultation for low-income families. Blood pressure, sugar level, and general health screening available. Qualified doctors and medical professionals will be present.",
         eventType: "Health Camp",
-        thumbnail: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=800&h=600&fit=crop&q=80",
         location: "Community Clinic, Block C",
         eventDate: addDays(14),
         creatorEmail: "demo5@example.com",
@@ -383,7 +406,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Join us for a beach cleanup to protect marine life. We'll collect plastic waste and debris from the shoreline. Bring your friends and family! Help preserve our beautiful coastline.",
         eventType: "Cleanup",
-        thumbnail: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop&q=80",
         location: "Sunset Beach, Coastal Road",
         eventDate: addDays(6),
         creatorEmail: "demo1@example.com",
@@ -394,7 +418,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Help us establish a community garden where neighbors can grow fresh vegetables. Learn gardening techniques and contribute to food security. All skill levels welcome!",
         eventType: "Plantation",
-        thumbnail: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&h=600&fit=crop&q=80",
         location: "Community Center, Green Valley",
         eventDate: addDays(9),
         creatorEmail: "demo2@example.com",
@@ -405,7 +430,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Collect and distribute warm clothing to homeless individuals. Coats, blankets, and winter accessories needed. Let's keep everyone warm this winter! Drop off donations or volunteer to help distribute.",
         eventType: "Donation",
-        thumbnail: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&h=600&fit=crop&q=80",
         location: "Community Hall, Main Street",
         eventDate: addDays(12),
         creatorEmail: "demo3@example.com",
@@ -416,7 +442,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Educational workshop on mental health awareness, stress management, and self-care techniques. Open to all community members. Learn valuable coping strategies and support resources.",
         eventType: "Awareness",
-        thumbnail: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=600&fit=crop&q=80",
         location: "Community Center, Room 201",
         eventDate: addDays(8),
         creatorEmail: "demo4@example.com",
@@ -427,7 +454,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Organize a blood donation camp in collaboration with local hospital. Your donation can save lives. All donors will receive a certificate and refreshments. Every drop counts!",
         eventType: "Health Camp",
-        thumbnail: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop&q=80",
         location: "City Hospital, Ground Floor",
         eventDate: addDays(11),
         creatorEmail: "demo5@example.com",
@@ -438,7 +466,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Promote recycling in our neighborhood. Collect recyclable materials and educate residents about proper waste management practices. Help create a sustainable community!",
         eventType: "Cleanup",
-        thumbnail: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=600&fit=crop&q=80",
         location: "Recycling Center, Industrial Area",
         eventDate: addDays(13),
         creatorEmail: "demo1@example.com",
@@ -449,7 +478,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Provide free tutoring and educational support to underprivileged students. Help shape the future of our community! Volunteers needed for math, science, and language subjects.",
         eventType: "Awareness",
-        thumbnail: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop&q=80",
         location: "Public Library, Study Hall",
         eventDate: addDays(15),
         creatorEmail: "demo2@example.com",
@@ -460,7 +490,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Help clean up our local river and protect aquatic life. We'll remove trash, debris, and pollutants from the riverbanks. Water safety equipment will be provided.",
         eventType: "Cleanup",
-        thumbnail: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=600&fit=crop&q=80",
         location: "Riverside Park, North Bridge",
         eventDate: addDays(4),
         creatorEmail: "demo1@example.com",
@@ -471,7 +502,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Create an urban forest in the heart of the city. Plant native trees and learn about urban forestry. This project will improve air quality and provide green spaces for future generations.",
         eventType: "Plantation",
-        thumbnail: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop&q=80",
         location: "Urban Development Zone, Block 7",
         eventDate: addDays(16),
         creatorEmail: "demo2@example.com",
@@ -482,7 +514,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Collect books for underprivileged children and community libraries. Fiction, non-fiction, textbooks, and children's books all welcome. Help spread the joy of reading!",
         eventType: "Donation",
-        thumbnail: "https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1481627834876-b7833e03f557?w=800&h=600&fit=crop&q=80",
         location: "Central Library, Main Entrance",
         eventDate: addDays(18),
         creatorEmail: "demo3@example.com",
@@ -493,7 +526,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Teach basic computer skills and internet usage to senior citizens and underprivileged youth. Help bridge the digital divide in our community. All equipment provided.",
         eventType: "Awareness",
-        thumbnail: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=600&fit=crop&q=80",
         location: "Community Tech Center, Floor 2",
         eventDate: addDays(20),
         creatorEmail: "demo4@example.com",
@@ -504,7 +538,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Free eye checkup and vision screening for all ages. Glasses distribution for those in need. Professional optometrists will conduct the examinations.",
         eventType: "Health Camp",
-        thumbnail: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop&q=80",
         location: "Community Health Center, Main Hall",
         eventDate: addDays(17),
         creatorEmail: "demo5@example.com",
@@ -515,7 +550,8 @@ app.get("/seed-demo-events", async (req, res) => {
         description:
           "Launch a campaign to reduce plastic usage in our community. Educational sessions, reusable bag distribution, and plastic collection drive. Let's make our community plastic-free!",
         eventType: "Awareness",
-        thumbnail: "https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=800&h=600&fit=crop&q=80",
+        thumbnail:
+          "https://images.unsplash.com/photo-1621451537084-482c73073a0f?w=800&h=600&fit=crop&q=80",
         location: "Community Plaza, Central Area",
         eventDate: addDays(19),
         creatorEmail: "demo1@example.com",
