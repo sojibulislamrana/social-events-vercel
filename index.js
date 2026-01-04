@@ -131,10 +131,10 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "City Park Cleanup Drive",
         description:
-          "Join us to clean up the city park and make it a cleaner space for everyone.",
+          "Join us to clean up the city park and make it a cleaner space for everyone. We'll be collecting trash, planting flowers, and beautifying the park area. All volunteers welcome!",
         eventType: "Cleanup",
-        thumbnail: "https://placehold.co/600x400?text=Park+Cleanup",
-        location: "City Park, Main Gate",
+        thumbnail: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop",
+        location: "City Park, Main Gate, Downtown",
         eventDate: addDays(3),
         creatorEmail: "demo1@example.com",
         createdAt: now,
@@ -142,9 +142,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Tree Plantation Day",
         description:
-          "Plant trees in the community area and help us make the city greener.",
+          "Plant trees in the community area and help us make the city greener. We'll provide all necessary tools and saplings. Let's work together for a sustainable future!",
         eventType: "Plantation",
-        thumbnail: "https://placehold.co/600x400?text=Tree+Plantation",
+        thumbnail: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&h=600&fit=crop",
         location: "Community Ground, Sector 5",
         eventDate: addDays(7),
         creatorEmail: "demo2@example.com",
@@ -153,9 +153,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Food Donation for Street Children",
         description:
-          "Distribute food packs and clothes to underprivileged children.",
+          "Distribute food packs and clothes to underprivileged children. Help us bring smiles to those in need. Your contribution matters!",
         eventType: "Donation",
-        thumbnail: "https://placehold.co/600x400?text=Food+Donation",
+        thumbnail: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop",
         location: "Central Bus Stand Area",
         eventDate: addDays(10),
         creatorEmail: "demo3@example.com",
@@ -164,9 +164,9 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Road Safety Awareness Campaign",
         description:
-          "Raise awareness about road safety rules among drivers and pedestrians.",
+          "Raise awareness about road safety rules among drivers and pedestrians. Educational sessions, demonstrations, and free safety equipment distribution.",
         eventType: "Awareness",
-        thumbnail: "https://placehold.co/600x400?text=Road+Safety",
+        thumbnail: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=600&fit=crop",
         location: "City Square, Near Traffic Signal",
         eventDate: addDays(5),
         creatorEmail: "demo4@example.com",
@@ -175,12 +175,89 @@ app.get("/seed-demo-events", async (req, res) => {
       {
         title: "Free Health Checkup Camp",
         description:
-          "Free basic health checkup and consultation for low-income families.",
+          "Free basic health checkup and consultation for low-income families. Blood pressure, sugar level, and general health screening available.",
         eventType: "Health Camp",
-        thumbnail: "https://placehold.co/600x400?text=Health+Camp",
+        thumbnail: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=800&h=600&fit=crop",
         location: "Community Clinic, Block C",
         eventDate: addDays(14),
         creatorEmail: "demo5@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Beach Cleanup Initiative",
+        description:
+          "Join us for a beach cleanup to protect marine life. We'll collect plastic waste and debris from the shoreline. Bring your friends and family!",
+        eventType: "Cleanup",
+        thumbnail: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
+        location: "Sunset Beach, Coastal Road",
+        eventDate: addDays(6),
+        creatorEmail: "demo1@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Community Garden Project",
+        description:
+          "Help us establish a community garden where neighbors can grow fresh vegetables. Learn gardening techniques and contribute to food security.",
+        eventType: "Plantation",
+        thumbnail: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=800&h=600&fit=crop",
+        location: "Community Center, Green Valley",
+        eventDate: addDays(9),
+        creatorEmail: "demo2@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Winter Clothing Drive",
+        description:
+          "Collect and distribute warm clothing to homeless individuals. Coats, blankets, and winter accessories needed. Let's keep everyone warm this winter!",
+        eventType: "Donation",
+        thumbnail: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&h=600&fit=crop",
+        location: "Community Hall, Main Street",
+        eventDate: addDays(12),
+        creatorEmail: "demo3@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Mental Health Awareness Workshop",
+        description:
+          "Educational workshop on mental health awareness, stress management, and self-care techniques. Open to all community members.",
+        eventType: "Awareness",
+        thumbnail: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&h=600&fit=crop",
+        location: "Community Center, Room 201",
+        eventDate: addDays(8),
+        creatorEmail: "demo4@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Blood Donation Camp",
+        description:
+          "Organize a blood donation camp in collaboration with local hospital. Your donation can save lives. All donors will receive a certificate.",
+        eventType: "Health Camp",
+        thumbnail: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop",
+        location: "City Hospital, Ground Floor",
+        eventDate: addDays(11),
+        creatorEmail: "demo5@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Neighborhood Recycling Drive",
+        description:
+          "Promote recycling in our neighborhood. Collect recyclable materials and educate residents about proper waste management practices.",
+        eventType: "Cleanup",
+        thumbnail: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=600&fit=crop",
+        location: "Recycling Center, Industrial Area",
+        eventDate: addDays(13),
+        creatorEmail: "demo1@example.com",
+        createdAt: now,
+      },
+      {
+        title: "Educational Support Program",
+        description:
+          "Provide free tutoring and educational support to underprivileged students. Help shape the future of our community!",
+        eventType: "Awareness",
+        thumbnail: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=600&fit=crop",
+        location: "Public Library, Study Hall",
+        eventDate: addDays(15),
+        creatorEmail: "demo2@example.com",
         createdAt: now,
       },
     ];
@@ -571,6 +648,64 @@ app.post("/join-event", async (req, res) => {
     res.status(500).json({
       ok: false,
       message: "Failed to join event.",
+      error: err.message,
+    });
+  }
+});
+
+// Delete event (only creator)
+app.delete("/events/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { requestorEmail } = req.body;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid event id.",
+      });
+    }
+
+    if (!requestorEmail) {
+      return res.status(400).json({
+        ok: false,
+        message: "requestorEmail is required.",
+      });
+    }
+
+    const existing = await eventsCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    if (!existing) {
+      return res.status(404).json({
+        ok: false,
+        message: "Event not found.",
+      });
+    }
+
+    if (existing.creatorEmail !== requestorEmail) {
+      return res.status(403).json({
+        ok: false,
+        message: "You are not allowed to delete this event.",
+      });
+    }
+
+    // Delete the event
+    await eventsCollection.deleteOne({ _id: new ObjectId(id) });
+
+    // Also delete related joined events
+    await joinedCollection.deleteMany({ eventId: new ObjectId(id) });
+
+    res.json({
+      ok: true,
+      message: "Event deleted successfully.",
+    });
+  } catch (err) {
+    console.error("Delete event error:", err);
+    res.status(500).json({
+      ok: false,
+      message: "Failed to delete event",
       error: err.message,
     });
   }
